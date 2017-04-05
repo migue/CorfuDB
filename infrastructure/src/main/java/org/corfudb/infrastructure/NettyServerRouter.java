@@ -10,8 +10,8 @@ import org.corfudb.protocols.wireprotocol.CorfuMsg;
 import org.corfudb.protocols.wireprotocol.CorfuMsgType;
 import org.corfudb.protocols.wireprotocol.CorfuPayloadMsg;
 
-import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,6 +45,17 @@ public class NettyServerRouter extends ChannelInboundHandlerAdapter
     @Getter
     @Setter
     long serverEpoch;
+
+    /**
+     * The cluster ID of the layout the serverRouter serves. This cluster ID is validated
+     * against all incoming messages which do not ignore ClusterId validation.
+     */
+    @Getter
+    private UUID clusterId;
+
+    public void setClusterId (UUID clusterId) {
+        this.clusterId = this.clusterId == null ? clusterId : this.clusterId;
+    }
 
     public NettyServerRouter(Map<String, Object> opts) {
         handlerMap = new ConcurrentHashMap<>();
@@ -110,6 +121,29 @@ public class NettyServerRouter extends ChannelInboundHandlerAdapter
     }
 
     /**
+     * Validate the clusterId of the CorfuMsg, and send a WRONG_CLUSTER_ID response
+     * if the server clusterId does not match. Ignored if message has ignoreClusterId
+     * flag set to true.
+     *
+     * @param msg   The incoming message to validate.
+     * @param ctx   The context of the channel handler.
+     * @return      True, if the cluster ID matches else false.
+     */
+    public boolean validateClusterId(CorfuMsg msg, ChannelHandlerContext ctx) {
+        UUID clusterId = getClusterId();
+        if (!msg.getMsgType().ignoreClusterId
+                && getClusterId() != null
+                && !msg.getClusterId().equals(clusterId)) {
+            sendResponse(ctx, msg, new CorfuPayloadMsg<>(CorfuMsgType.WRONG_CLUSTER_ID,
+                    clusterId));
+            log.trace("Incoming message with wrong clusterID, got {}, expected {}, message was: {}",
+                    msg.getClusterId(), clusterId, msg);
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Handle an incoming message read on the channel.
      *
      * @param ctx Channel handler context
@@ -126,7 +160,7 @@ public class NettyServerRouter extends ChannelInboundHandlerAdapter
                 // The message was unregistered, we are dropping it.
                 log.warn("Received unregistered message {}, dropping", m);
             } else {
-                if (validateEpoch(m, ctx)) {
+                if (validateClusterId(m, ctx) && validateEpoch(m, ctx)) {
                     // Route the message to the handler.
                     log.trace("Message routed to {}: {}", handler.getClass().getSimpleName(), msg);
                     handlerWorkers.submit(() -> handler.handleMessage(m, ctx, this));

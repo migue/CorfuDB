@@ -2,10 +2,17 @@ package org.corfudb.runtime.view;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.corfudb.runtime.CorfuRuntime;
-import org.corfudb.runtime.clients.*;
+import org.corfudb.runtime.clients.LayoutClient;
+import org.corfudb.runtime.clients.LogUnitClient;
+import org.corfudb.runtime.clients.SequencerClient;
 import org.corfudb.runtime.exceptions.QuorumUnreachableException;
 import org.corfudb.runtime.exceptions.WrongEpochException;
 import org.corfudb.runtime.view.stream.BackpointerStreamView;
@@ -35,6 +42,11 @@ public class Layout implements Cloneable {
      * A Gson parser.
      */
     static final Gson parser = new GsonBuilder().create();
+    /**
+     * The clusterID of this layout cluster.
+     */
+    @Getter
+    final UUID clusterId;
     /**
      * A list of layout servers in the layout.
      */
@@ -71,16 +83,22 @@ public class Layout implements Cloneable {
 
     transient ConcurrentHashMap<LayoutSegment, AbstractReplicationView> replicationViewCache;
 
-    public Layout(List<String> layoutServers, List<String> sequencers, List<LayoutSegment> segments, List<String> unresponsiveServers, long epoch) {
+    public Layout(List<String> layoutServers, List<String> sequencers, List<LayoutSegment> segments,
+                  List<String> unresponsiveServers, long epoch, UUID clusterId) {
         this.layoutServers = layoutServers;
         this.sequencers = sequencers;
         this.segments = segments;
         this.unresponsiveServers = unresponsiveServers;
         this.epoch = epoch;
+        this.clusterId = clusterId;
+    }
+
+    public Layout(List<String> layoutServers, List<String> sequencers, List<LayoutSegment> segments, List<String> unresponsiveServers, long epoch) {
+        this(layoutServers, sequencers, segments, unresponsiveServers, epoch, UUID.randomUUID());
     }
 
     public Layout(List<String> layoutServers, List<String> sequencers, List<LayoutSegment> segments, long epoch) {
-        this(layoutServers, sequencers, segments, new ArrayList<String>(), epoch);
+        this(layoutServers, sequencers, segments, new ArrayList<String>(), epoch, UUID.randomUUID());
     }
 
     /**

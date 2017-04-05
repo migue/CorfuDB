@@ -10,6 +10,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
+import java.util.UUID;
 
 /**
  * Created by mwei on 8/8/16.
@@ -18,26 +19,27 @@ import java.lang.reflect.Constructor;
 @AllArgsConstructor
 public enum CorfuMsgType {
     // Base Messages
-    PING(0, TypeToken.of(CorfuMsg.class)),
+    PING(0, TypeToken.of(CorfuMsg.class), false, true),
     PONG(1, TypeToken.of(CorfuMsg.class), true),
     RESET(2, TypeToken.of(CorfuMsg.class), true),
     SET_EPOCH(3, new TypeToken<CorfuPayloadMsg<Long>>() {}, true),
     ACK(4, TypeToken.of(CorfuMsg.class), true),
     WRONG_EPOCH(5, new TypeToken<CorfuPayloadMsg<Long>>() {},  true),
-    NACK(6, TypeToken.of(CorfuMsg.class)),
-    VERSION_REQUEST(7, TypeToken.of(CorfuMsg.class), true),
-    VERSION_RESPONSE(8, new TypeToken<JSONPayloadMsg<VersionInfo>>() {}, true),
+    WRONG_CLUSTER_ID(6, new TypeToken<CorfuPayloadMsg<UUID>>() {},  true, true),
+    NACK(7, TypeToken.of(CorfuMsg.class)),
+    VERSION_REQUEST(8, TypeToken.of(CorfuMsg.class), true, true),
+    VERSION_RESPONSE(9, new TypeToken<JSONPayloadMsg<VersionInfo>>() {}, true),
 
     // Layout Messages
-    LAYOUT_REQUEST(10, new TypeToken<CorfuPayloadMsg<Long>>(){}, true),
-    LAYOUT_RESPONSE(11, TypeToken.of(LayoutMsg.class), true),
+    LAYOUT_REQUEST(10, new TypeToken<CorfuPayloadMsg<Long>>(){}, true, true),
+    LAYOUT_RESPONSE(11, TypeToken.of(LayoutMsg.class), true, true),
     LAYOUT_PREPARE(12, new TypeToken<CorfuPayloadMsg<LayoutPrepareRequest>>(){}, true),
     LAYOUT_PREPARE_REJECT(13, new TypeToken<CorfuPayloadMsg<LayoutPrepareResponse>>(){}),
     LAYOUT_PROPOSE(14, new TypeToken<CorfuPayloadMsg<LayoutProposeRequest>>(){}, true),
     LAYOUT_PROPOSE_REJECT(15, new TypeToken<CorfuPayloadMsg<LayoutProposeResponse>>(){}),
     LAYOUT_COMMITTED(16, new TypeToken<CorfuPayloadMsg<LayoutCommittedRequest>>(){}, true),
-    LAYOUT_QUERY(17, new TypeToken<CorfuPayloadMsg<Long>>(){}),
-    LAYOUT_BOOTSTRAP(18, new TypeToken<CorfuPayloadMsg<LayoutBootstrapRequest>>(){}, true),
+    LAYOUT_QUERY(17, new TypeToken<CorfuPayloadMsg<Long>>(){}, false, true),
+    LAYOUT_BOOTSTRAP(18, new TypeToken<CorfuPayloadMsg<LayoutBootstrapRequest>>(){}, true, true),
     LAYOUT_NOBOOTSTRAP(19, TypeToken.of(CorfuMsg.class), true),
 
     // Sequencer Messages
@@ -72,19 +74,25 @@ public enum CorfuMsgType {
     LAYOUT_PREPARE_ACK(61, new TypeToken<CorfuPayloadMsg<LayoutPrepareResponse>>(){}, true),
 
     // Management Messages
-    MANAGEMENT_BOOTSTRAP_REQUEST(70, new TypeToken<CorfuPayloadMsg<Layout>>(){}, true),
+    MANAGEMENT_BOOTSTRAP_REQUEST(70, new TypeToken<CorfuPayloadMsg<Layout>>(){}, true, true),
     MANAGEMENT_NOBOOTSTRAP_ERROR(71, TypeToken.of(CorfuMsg.class), true),
     MANAGEMENT_ALREADY_BOOTSTRAP_ERROR(72, TypeToken.of(CorfuMsg.class), true),
-    MANAGEMENT_START_FAILURE_HANDLER(73, TypeToken.of(CorfuMsg.class), true),
-    MANAGEMENT_FAILURE_DETECTED(74, new TypeToken<CorfuPayloadMsg<FailureDetectorMsg>>(){}, true),
-    HEARTBEAT_REQUEST(75, TypeToken.of(CorfuMsg.class), true),
-    HEARTBEAT_RESPONSE(76, new TypeToken<CorfuPayloadMsg<byte[]>>(){}, true);
+    MANAGEMENT_START_FAILURE_HANDLER(73, TypeToken.of(CorfuMsg.class), true, true),
+    MANAGEMENT_FAILURE_DETECTED(74, new TypeToken<CorfuPayloadMsg<FailureDetectorMsg>>(){}, true, true),
+    HEARTBEAT_REQUEST(75, TypeToken.of(CorfuMsg.class), true, true),
+    HEARTBEAT_RESPONSE(76, new TypeToken<CorfuPayloadMsg<byte[]>>(){}, true, true);
 
+    CorfuMsgType(int type, TypeToken<? extends CorfuMsg> messageType, Boolean ignoreEpoch) {
+        this.type = type;
+        this.messageType = messageType;
+        this.ignoreEpoch = ignoreEpoch;
+    }
 
     public final int type;
     public final TypeToken<? extends CorfuMsg> messageType;
     //public final Class<? extends AbstractServer> handler;
     public Boolean ignoreEpoch = false;
+    public Boolean ignoreClusterId = false;
 
     public <T> CorfuPayloadMsg<T> payloadMsg(T payload) {
         // todo:: maybe some typechecking here (performance impact?)

@@ -88,6 +88,17 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
     @Getter
     @Setter
     public long epoch;
+
+    /**
+     * The cluster ID to be attached in every message.
+     */
+    @Getter
+    private UUID clusterId;
+
+    public void setClusterId (UUID clusterId) {
+        this.clusterId = this.clusterId == null ? clusterId : this.clusterId;
+    }
+
     /**
      * The id of this client.
      */
@@ -444,6 +455,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
             message.setClientID(clientID);
             message.setRequestID(thisRequest);
             message.setEpoch(epoch);
+            message.setClusterId(clusterId);
 
             // Generate a future and put it in the completion table.
             final CompletableFuture<T> cf = new CompletableFuture<>();
@@ -493,6 +505,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         message.setClientID(clientID);
         message.setRequestID(thisRequest);
         message.setEpoch(epoch);
+        message.setClusterId(clusterId);
         // Write this message out on the channel.
         outContext.writeAndFlush(message);
         MetricsUtils.incConditionalCounter(MetricsUtils.isMetricsCollectionEnabled(), counterAsyncOpSent, 1);
@@ -510,6 +523,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
     public void sendResponseToServer(ChannelHandlerContext ctx, CorfuMsg inMsg, CorfuMsg outMsg) {
         outMsg.copyBaseFields(inMsg);
         outMsg.setEpoch(epoch);
+        outMsg.setClusterId(clusterId);
         ctx.writeAndFlush(outMsg);
         log.trace("Sent response: {}", outMsg);
     }

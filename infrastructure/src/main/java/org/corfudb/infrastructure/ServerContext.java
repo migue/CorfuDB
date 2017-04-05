@@ -7,6 +7,7 @@ import org.corfudb.util.MetricsUtils;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.corfudb.util.MetricsUtils.addJVMMetrics;
 import static org.corfudb.util.MetricsUtils.isMetricsReportingSetUp;
@@ -28,6 +29,8 @@ import static org.corfudb.util.MetricsUtils.isMetricsReportingSetUp;
 public class ServerContext {
     private static final String PREFIX_EPOCH = "SERVER_EPOCH";
     private static final String KEY_EPOCH = "CURRENT";
+    private static final String PREFIX_CLUSTER_ID = "CLUSTER_ID";
+    private static final String KEY_CLUSTER_ID = "CURRENT_CLUSTER_ID";
 
     /**
      * magic non-address value, used in parameters to indicate no valid log address is provided
@@ -92,5 +95,18 @@ public class ServerContext {
         // Set the epoch in the router as well.
         //TODO need to figure out if we can remove this redundancy
         serverRouter.setServerEpoch(serverEpoch);
+    }
+
+    /**
+     * The ID for this cluster.
+     */
+    public synchronized UUID getClusterId() {
+        UUID clusterId = dataStore.get(UUID.class, PREFIX_CLUSTER_ID, KEY_CLUSTER_ID);
+        return clusterId;
+    }
+
+    public synchronized  void setClusterId(UUID clusterId) {
+        dataStore.put(UUID.class, PREFIX_CLUSTER_ID, KEY_CLUSTER_ID, clusterId);
+        serverRouter.setClusterId(clusterId);
     }
 }

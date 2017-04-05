@@ -5,9 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.corfudb.protocols.wireprotocol.*;
+import org.corfudb.runtime.exceptions.WrongClusterIdException;
 import org.corfudb.runtime.exceptions.WrongEpochException;
 
 import java.lang.invoke.MethodHandles;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -142,6 +144,18 @@ public class BaseClient implements IClient {
     @ClientHandler(type=CorfuMsgType.WRONG_EPOCH)
     private static Object handleWrongEpoch(CorfuPayloadMsg<Long> msg, ChannelHandlerContext ctx, IClientRouter r) {
         throw new WrongEpochException(msg.getPayload());
+    }
+
+    /** Handle a WRONG_CLUSTER_ID response from the server.
+     *
+     * @param msg   The wrong cluster id message
+     * @param ctx   The context the message was sent under
+     * @param r     A reference to the router
+     * @return      none, throw a wrong cluster id exception instead.
+     */
+    @ClientHandler(type=CorfuMsgType.WRONG_CLUSTER_ID)
+    private static Object handleWrongClusterId(CorfuPayloadMsg<UUID> msg, ChannelHandlerContext ctx, IClientRouter r) {
+        throw new WrongClusterIdException(msg.getPayload());
     }
 
     /** Handle a Version response from the server.

@@ -7,6 +7,7 @@ import org.corfudb.runtime.view.Layout;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -23,10 +24,18 @@ public class TestLayoutBuilder {
     @Setter
     long epoch = 0L;
 
+    @Getter
+    @Setter
+    UUID clusterId;
+
+    @Getter
+    static final UUID singleCLusterId = UUID.randomUUID();
+
     public TestLayoutBuilder() {
         sequencerServers = new ArrayList<>();
         layoutServers = new ArrayList<>();
         segments = new ArrayList<>();
+        clusterId = UUID.randomUUID();
     }
 
     static String getEndpoint(int port) {
@@ -35,6 +44,7 @@ public class TestLayoutBuilder {
 
     public static Layout single(int port) {
         return new TestLayoutBuilder()
+                .setClusterId(singleCLusterId)
                 .addLayoutServer(port)
                 .addSequencer(port)
                 .buildSegment()
@@ -72,7 +82,9 @@ public class TestLayoutBuilder {
         return new Layout(layoutServers,
                 sequencerServers,
                 segmentList,
-                epoch);
+                new ArrayList<>(),
+                epoch,
+                clusterId);
     }
 
     @Accessors(chain = true)

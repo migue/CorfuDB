@@ -216,7 +216,9 @@ public class LayoutWorkflowManager {
                 layout.getLayoutServers(),
                 layout.getSequencers(),
                 layout.getSegments(),
-                this.epoch);
+                new ArrayList<>(),
+                this.epoch,
+                layout.getClusterId());
     }
 
 }

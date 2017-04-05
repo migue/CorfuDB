@@ -70,6 +70,13 @@ public class TestClientRouter implements IClientRouter {
     @Setter
     public UUID clientID;
 
+
+    @Getter
+    private UUID clusterId;
+    public void setClusterId (UUID clusterId) {
+        this.clusterId = this.clusterId == null ? clusterId : this.clusterId;
+    }
+
     /**
      * New connection timeout (milliseconds)
      */
@@ -190,6 +197,7 @@ public class TestClientRouter implements IClientRouter {
         message.setClientID(clientID);
         message.setRequestID(thisRequest);
         message.setEpoch(getEpoch());
+        message.setClusterId(getClusterId());
         // Generate a future and put it in the completion table.
         final CompletableFuture<T> cf = new CompletableFuture<>();
         outstandingRequests.put(thisRequest, cf);
@@ -224,6 +232,7 @@ public class TestClientRouter implements IClientRouter {
         message.setClientID(clientID);
         message.setRequestID(thisRequest);
         message.setEpoch(getEpoch());
+        message.setClusterId(getClusterId());
         // Evaluate rules.
         if (rules.stream()
                 .map(x -> x.evaluate(message, this))

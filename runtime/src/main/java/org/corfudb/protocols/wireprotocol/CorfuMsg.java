@@ -1,14 +1,13 @@
 package org.corfudb.protocols.wireprotocol;
 
-import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +39,10 @@ public class CorfuMsg {
      */
     long epoch;
     /**
+     * The cluster id of this request/response
+     */
+    UUID clusterId;
+    /**
      * The underlying ByteBuf, if present.
      */
     ByteBuf buf;
@@ -61,8 +64,8 @@ public class CorfuMsg {
     }
 
         /* The wire format of the NettyCorfuMessage message is below:
-        markerField(1) | client ID(8) | request ID(8) |  epoch(8)   |  type(1)  |
-*/
+        markerField(1) | client ID(16) | request ID(8) |  epoch(8) | cluster ID(16) | type(1) |
+        */
 
 
     /**
@@ -80,12 +83,14 @@ public class CorfuMsg {
         UUID clientID = new UUID(buffer.readLong(), buffer.readLong());
         long requestID = buffer.readLong();
         long epoch = buffer.readLong();
+        UUID clusterId = new UUID(buffer.readLong(), buffer.readLong());
         CorfuMsgType message = typeMap.get(buffer.readByte());
         CorfuMsg msg = message.getConstructor().construct();
 
         msg.clientID = clientID;
         msg.requestID = requestID;
         msg.epoch = epoch;
+        msg.clusterId = clusterId;
         msg.msgType = message;
         msg.fromBuffer(buffer);
         msg.buf = buffer;
@@ -108,6 +113,13 @@ public class CorfuMsg {
         }
         buffer.writeLong(requestID);
         buffer.writeLong(epoch);
+        if (clusterId == null) {
+            buffer.writeLong(0L);
+            buffer.writeLong(0L);
+        } else {
+            buffer.writeLong(clusterId.getMostSignificantBits());
+            buffer.writeLong(clusterId.getLeastSignificantBits());
+        }
         buffer.writeByte(msgType.asByte());
     }
 
@@ -128,6 +140,7 @@ public class CorfuMsg {
         this.clientID = msg.clientID;
         this.epoch = msg.epoch;
         this.requestID = msg.requestID;
+        this.clusterId = msg.clusterId;
     }
 
     /**

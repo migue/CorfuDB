@@ -94,7 +94,9 @@ public class LayoutServer extends AbstractServer {
                                 )
                         )
                 )),
-                0L
+                Collections.EMPTY_LIST,
+                0L,
+                UUID.randomUUID()
         ));
     }
 
@@ -139,6 +141,7 @@ public class LayoutServer extends AbstractServer {
             log.info("Bootstrap with new layout={}, {}",  msg.getPayload().getLayout(), msg);
             setCurrentLayout(msg.getPayload().getLayout());
             serverContext.setServerEpoch(getCurrentLayout().getEpoch());
+            serverContext.setClusterId(getCurrentLayout().getClusterId());
             //send a response that the bootstrap was successful.
             r.sendResponse(ctx, msg, new CorfuMsg(CorfuMsgType.ACK));
         } else {
@@ -308,6 +311,8 @@ public class LayoutServer extends AbstractServer {
         serverContext.getDataStore().put(Layout.class, PREFIX_LAYOUT, KEY_LAYOUT, layout);
         // set the layout in history as well
         setLayoutInHistory(layout);
+        // set the new cluster id
+        serverContext.setClusterId(getCurrentLayout().getClusterId());
     }
 
     public Rank getPhase1Rank() {

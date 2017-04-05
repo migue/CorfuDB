@@ -2,14 +2,20 @@ package org.corfudb.runtime.view;
 
 import lombok.extern.slf4j.Slf4j;
 import org.corfudb.infrastructure.TestLayoutBuilder;
+import org.corfudb.protocols.wireprotocol.CorfuMsgType;
+import org.corfudb.protocols.wireprotocol.LayoutBootstrapRequest;
 import org.corfudb.runtime.CorfuRuntime;
+import org.corfudb.runtime.clients.LayoutClient;
 import org.corfudb.runtime.clients.TestRule;
+import org.corfudb.runtime.exceptions.WrongClusterIdException;
 import org.corfudb.runtime.view.stream.IStreamView;
 import org.junit.Test;
 
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Created by mwei on 1/6/16.
@@ -170,6 +176,61 @@ public class LayoutViewTest extends AbstractViewTest {
         layoutReconfiguredLatch.await();
         assertThat(sv.next().getPayload(corfuRuntime)).isEqualTo("hello world".getBytes());
         assertThat(sv.next()).isEqualTo(null);
+    }
+
+    /**
+     * Set up 2 clusters with one node each and completely bootstrapped.
+     * We then attempt to send a phase 1 paxos message and see that it gets rejected
+     * at the router and returns back a wrong cluster id exception.
+     * @throws Exception
+     */
+    @Test
+    public void rejectInterClusterControlMsgs()
+            throws Exception {
+        addServer(SERVERS.PORT_0);
+        addServer(SERVERS.PORT_1);
+
+        Layout layout1 = new TestLayoutBuilder()
+                .setClusterId(UUID.randomUUID())
+                .setEpoch(1L)
+                .addLayoutServer(SERVERS.PORT_0)
+                .addSequencer(SERVERS.PORT_0)
+                .buildSegment()
+                .buildStripe()
+                .addLogUnit(SERVERS.PORT_0)
+                .addToSegment()
+                .addToLayout()
+                .build();
+        getLayoutServer(SERVERS.PORT_0).handleMessage(CorfuMsgType.LAYOUT_BOOTSTRAP.payloadMsg(new LayoutBootstrapRequest(layout1)),
+                null, getServerRouter(SERVERS.PORT_0));
+        getManagementServer(SERVERS.PORT_0).handleMessage(CorfuMsgType.MANAGEMENT_BOOTSTRAP_REQUEST.payloadMsg(layout1),
+                null, getServerRouter(SERVERS.PORT_0));
+
+        Layout layout2 = new TestLayoutBuilder()
+                .setClusterId(UUID.randomUUID())
+                .setEpoch(1L)
+                .addLayoutServer(SERVERS.PORT_1)
+                .addSequencer(SERVERS.PORT_1)
+                .buildSegment()
+                .buildStripe()
+                .addLogUnit(SERVERS.PORT_1)
+                .addToSegment()
+                .addToLayout()
+                .build();
+        getLayoutServer(SERVERS.PORT_1).handleMessage(CorfuMsgType.LAYOUT_BOOTSTRAP.payloadMsg(new LayoutBootstrapRequest(layout2)),
+                null, getServerRouter(SERVERS.PORT_1));
+        getManagementServer(SERVERS.PORT_1).handleMessage(CorfuMsgType.MANAGEMENT_BOOTSTRAP_REQUEST.payloadMsg(layout2),
+                null, getServerRouter(SERVERS.PORT_1));
+
+        CorfuRuntime corfuRuntime = getRuntime(layout1).connect();
+        layout1.setRuntime(corfuRuntime);
+        layout1.setEpoch(layout1.getEpoch() + 1);
+        layout1.moveServersToEpoch();
+        layout1.getLayoutServers().add(SERVERS.ENDPOINT_1);
+        assertThat(corfuRuntime.getRouter(SERVERS.ENDPOINT_0).getClusterId()).isEqualTo(layout1.getClusterId());
+        assertThatThrownBy(() ->
+            corfuRuntime.getRouter(SERVERS.ENDPOINT_1).getClient(LayoutClient.class).prepare(2L, 1L).get()
+        ).hasCause(new WrongClusterIdException(layout2.getClusterId()));
     }
 
 }

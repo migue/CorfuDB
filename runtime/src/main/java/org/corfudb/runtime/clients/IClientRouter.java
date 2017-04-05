@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import org.corfudb.protocols.wireprotocol.CorfuMsg;
 
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -131,6 +132,16 @@ public interface IClientRouter {
      * Set the current epoch.
      */
     void setEpoch(long newEpoch);
+
+    /**
+     * Get the cluster ID
+     */
+    UUID getClusterId();
+
+    /**
+     * Set the cluster ID
+     */
+    void setClusterId(UUID clusterId);
 
     /**
      * Set the Connect timeout
