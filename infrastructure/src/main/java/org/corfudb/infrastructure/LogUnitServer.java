@@ -148,22 +148,11 @@ public class LogUnitServer extends AbstractServer {
         // clear any commit record (or set initially to false).
         msg.getPayload().clearCommit();
         try {
-            if (msg.getPayload().getWriteMode() != WriteMode.REPLEX_STREAM) {
-                dataCache.put(new LogAddress(msg.getPayload().getGlobalAddress(), null), msg.getPayload().getData());
-                r.sendResponse(ctx, msg, CorfuMsgType.WRITE_OK.msg());
-            } else {
-                for (UUID streamID : msg.getPayload().getStreamAddresses().keySet()) {
-                    dataCache.put(new LogAddress(msg.getPayload().getStreamAddresses().get(streamID), streamID),
-                            msg.getPayload().getData());
-                }
-                r.sendResponse(ctx, msg, CorfuMsgType.WRITE_OK.msg());
-            }
+            dataCache.put(new LogAddress(msg.getPayload().getGlobalAddress(), null), msg.getPayload().getData());
+            r.sendResponse(ctx, msg, CorfuMsgType.WRITE_OK.msg());
+
         } catch (OverwriteException ex) {
-            if (msg.getPayload().getWriteMode() != WriteMode.REPLEX_STREAM) {
                 r.sendResponse(ctx, msg, CorfuMsgType.ERROR_OVERWRITE.msg());
-            } else {
-                r.sendResponse(ctx, msg, CorfuMsgType.ERROR_REPLEX_OVERWRITE.msg());
-            }
         } catch (DataOutrankedException e) {
             r.sendResponse(ctx, msg, CorfuMsgType.ERROR_DATA_OUTRANKED.msg());
         } catch (ValueAdoptedException e) {
@@ -268,7 +257,7 @@ public class LogUnitServer extends AbstractServer {
     }
 
     /**
-     * Retrieve the ILogData from disk, given an address.
+     * Retrieve the LogUnitEntry from disk, given an address.
      *
      * @param logAddress The address to retrieve the entry from.
      * @return The log unit entry to retrieve into the cache.

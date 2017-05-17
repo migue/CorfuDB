@@ -22,9 +22,7 @@ public class WriteRequest implements ICorfuPayload<WriteRequest>, IMetadata {
     @SuppressWarnings("unchecked")
     public WriteRequest(ByteBuf buf) {
         writeMode = ICorfuPayload.fromBuffer(buf, WriteMode.class);
-        if (writeMode == WriteMode.REPLEX_STREAM) {
-            streamAddresses = ICorfuPayload.mapFromBuffer(buf, UUID.class, Long.class);
-        } else { streamAddresses = null; }
+        streamAddresses = null;
         data = ICorfuPayload.fromBuffer(buf, LogData.class);
     }
 
@@ -32,7 +30,7 @@ public class WriteRequest implements ICorfuPayload<WriteRequest>, IMetadata {
         this(writeMode, DataType.DATA, streamAddresses, buf);
     }
 
-    public WriteRequest(WriteMode writeMode, DataType dataType,  Map<UUID, Long> streamAddresses, ByteBuf buf) {
+    public WriteRequest(WriteMode writeMode, DataType dataType, Map<UUID, Long> streamAddresses, ByteBuf buf) {
         this.writeMode = writeMode;
         this.streamAddresses = streamAddresses;
         this.data = new LogData(dataType, buf);
@@ -40,26 +38,18 @@ public class WriteRequest implements ICorfuPayload<WriteRequest>, IMetadata {
 
     public WriteRequest(ILogData data) {
         writeMode = WriteMode.NORMAL;
+        this.streamAddresses = null;
         this.data = data;
-        streamAddresses = null;
     }
 
     @Override
     public void doSerialize(ByteBuf buf) {
         ICorfuPayload.serialize(buf, writeMode);
-        if (writeMode == WriteMode.REPLEX_STREAM) {
-            ICorfuPayload.serialize(buf, streamAddresses);
-        }
         ICorfuPayload.serialize(buf, data);
     }
 
     @Override
     public EnumMap<LogUnitMetadataType, Object> getMetadataMap() {
         return data.getMetadataMap();
-    }
-
-    // This class sets defaults for the builder pattern.
-    public static class WriteRequestBuilder {
-        private WriteMode writeMode = WriteMode.NORMAL;
     }
 }
